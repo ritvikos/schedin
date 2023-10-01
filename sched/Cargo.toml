@@ -1,0 +1,12 @@
+[package]
+name = "sched"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = { version = "4.4.0", default-features = false, features = [
+    "macros",
+    "rustls",
+] }
+rustls = { version = "0.20.7", default-features = false }
+rustls-pemfile = { version = "1.0.3", default-features = false }
