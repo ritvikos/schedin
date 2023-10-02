@@ -10,3 +10,9 @@ actix-web = { version = "4.4.0", default-features = false, features = [
 ] }
 rustls = { version = "0.20.7", default-features = false }
 rustls-pemfile = { version = "1.0.3", default-features = false }
+sqlx = { version = "0.7", features = [
+    "macros",
+    "migrate",
+    "postgres",
+    "runtime-async-std",
+], default-features = false }
