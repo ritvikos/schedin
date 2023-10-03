@@ -1,4 +1,4 @@
-CREATE TYPE job_type AS ENUM ('Binary', 'Code', 'Task');
+CREATE TYPE job_type AS ENUM ('Bin', 'Code', 'Task');
 
 CREATE TYPE job_status AS ENUM (
     'Running',
@@ -7,8 +7,26 @@ CREATE TYPE job_status AS ENUM (
     'Disabled'
 );
 
+CREATE TABLE task (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE code (
+    id UUID PRIMARY KEY,
+    src TEXT NOT NULL,
+    lang VARCHAR(50),
+    cmd VARCHAR(255)
+);
+
+CREATE TABLE bin (
+    id UUID PRIMARY KEY,
+    path VARCHAR(255) NOT NULL,
+    cmd VARCHAR(255)
+);
+
 CREATE TABLE IF NOT EXISTS jobs (
-    id VARCHAR(255) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     type job_type,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -18,23 +36,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     next_run_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     status job_status NOT NULL,
-    task VARCHAR(255),
-    code TEXT,
-    store VARCHAR(255),
-    CONSTRAINT enforce_type CHECK (
-        (
-            type = 'Binary'
-            AND store IS NOT NULL
-        )
-        OR (
-            type = 'Code'
-            AND code IS NOT NULL
-        )
-        OR (
-            type = 'Task'
-            AND task IS NOT NULL
-        )
-    )
+    task UUID REFERENCES task(id),
+    bin UUID REFERENCES bin(id),
+    code_id UUID REFERENCES code(id)
 );
 
 -- index on the 'name' column for faster name-based lookups

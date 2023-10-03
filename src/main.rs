@@ -14,6 +14,7 @@ use sqlx::{migrate::Migrator, PgPool};
 use std::env;
 
 mod certs;
+mod job;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
