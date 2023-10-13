@@ -4,3 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sqlx = { version = "0.7.2", features = [
+    "runtime-async-std",
+    "postgres",
+    "macros",
+    "uuid",
+    "time",
+], default-features = false }
+
+tokio = { version = "1.33.0", features = [
+    "macros",
+    "rt-multi-thread",
+], default-features = false }
