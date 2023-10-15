@@ -1,7 +1,6 @@
 //! DB Utilities
 
 extern crate sqlx;
-extern crate uuid;
 
 use crate::error::CrudError;
 use sqlx::{PgPool, Pool, Postgres};

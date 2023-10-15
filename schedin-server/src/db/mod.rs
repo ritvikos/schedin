@@ -61,7 +61,10 @@ impl DB {
         let tx = self.tx().await?;
 
         sqlx::query!(
-            "INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, schedule, next_run_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            r#"
+            INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, schedule, next_run_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
             user_id,
             job_id,
             self.job.name,
@@ -76,7 +79,10 @@ impl DB {
 
         if let Some(task) = &self.job.task {
             sqlx::query!(
-                "INSERT INTO tasks (job_id, task_name) VALUES ($1, $2)",
+                r#"
+                INSERT INTO tasks (job_id, task_name) 
+                VALUES ($1, $2)
+                "#,
                 job_id,
                 task.name
             )
@@ -87,7 +93,10 @@ impl DB {
 
         if let Some(code) = &self.job.code {
             sqlx::query!(
-                "INSERT INTO codes (job_id, src, lang, cmd) VALUES ($1, $2, $3, $4)",
+                r#"
+                INSERT INTO codes (job_id, src, lang, cmd) 
+                VALUES ($1, $2, $3, $4)
+                "#,
                 job_id,
                 code.src,
                 code.lang,
@@ -100,7 +109,10 @@ impl DB {
 
         if let Some(bin) = &self.job.bin {
             sqlx::query!(
-                "INSERT INTO bins (job_id, path, cmd) VALUES ($1, $2, $3)",
+                r#"
+                INSERT INTO bins (job_id, path, cmd) 
+                VALUES ($1, $2, $3)
+                "#,
                 job_id,
                 bin.path,
                 bin.cmd
@@ -124,7 +136,9 @@ impl DB {
         let tx = self.tx().await?;
 
         sqlx::query!(
-            "DELETE FROM jobs WHERE user_id=$1 AND job_name=$2",
+            r#"
+            DELETE FROM jobs WHERE user_id=$1 AND job_name=$2
+            "#,
             user_id,
             self.job.name
         )

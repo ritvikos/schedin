@@ -70,7 +70,7 @@ use validator::Validate;
 /// {
 ///     "name": "job-Z",
 ///     "description": "description_Z",
-///     "schedule": "@every 10 hrs",
+///     "schedule": "@every 10 hr",
 ///     "bin": {
 ///         "path": "https://s3-bucket.com/1"
 ///     }

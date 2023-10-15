@@ -14,7 +14,7 @@ pub struct User {
 }
 
 impl User {
-    /// Default User
+    /// New User
     pub fn new(pool: Pool<Postgres>) -> Self {
         Self {
             pool,
@@ -47,7 +47,10 @@ impl User {
         let tx = self.tx().await?;
 
         query!(
-            "INSERT INTO users (user_id, username, passcode, email) VALUES ($1, $2, $3, $4)",
+            r#"
+            INSERT INTO users (user_id, username, passcode, email) 
+            VALUES ($1, $2, $3, $4)
+            "#,
             user_id,
             self.user.username,
             password,
@@ -71,7 +74,10 @@ impl User {
 
         let query = query_as!(
             schema::SigninRow,
-            "SELECT user_id, username, passcode FROM users WHERE username=$1 AND passcode=$2",
+            r#"
+            SELECT user_id, username, passcode FROM users 
+            WHERE username=$1 AND passcode=$2
+            "#,
             self.user.username.unwrap(),
             password
         )
