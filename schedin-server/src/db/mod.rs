@@ -2,20 +2,18 @@
 
 extern crate sqlx;
 extern crate std;
-extern crate time;
 extern crate uuid;
 
 pub mod user;
 pub mod utils;
 
 use super::error::CrudError;
-use crate::{
-    api::validation::{Schedule, TimeFrame},
-    job::schema::{Job, JobType},
+use crate::job::{
+    schedule::Schedule,
+    schema::{Job, JobType},
 };
-use sqlx::{types::time::OffsetDateTime, PgPool, Pool, Postgres, Transaction};
+use sqlx::{PgPool, Pool, Postgres, Transaction};
 use std::sync::Arc;
-use time::Duration;
 use uuid::Uuid;
 
 pub struct DB {
