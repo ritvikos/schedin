@@ -87,7 +87,7 @@ pub async fn insert_job(
 
     if let Err(err) = DB::new(db.into_inner())
         .job(payload.0)
-        .insert(account.id)
+        .insert(&account.id)
         .await
     {
         return err.json();

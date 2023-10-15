@@ -2,15 +2,20 @@
 
 extern crate sqlx;
 extern crate std;
+extern crate time;
 extern crate uuid;
 
 pub mod user;
 pub mod utils;
 
 use super::error::CrudError;
-use crate::job::schema::{Job, JobType};
-use sqlx::{PgPool, Pool, Postgres, Transaction};
+use crate::{
+    api::validation::{Schedule, TimeFrame},
+    job::schema::{Job, JobType},
+};
+use sqlx::{types::time::OffsetDateTime, PgPool, Pool, Postgres, Transaction};
 use std::sync::Arc;
+use time::Duration;
 use uuid::Uuid;
 
 pub struct DB {
@@ -42,32 +47,36 @@ impl DB {
         }
     }
 
-    pub async fn insert(self, user_id: String) -> Result<(), CrudError> {
-        let user_id = Uuid::parse_str(&user_id).unwrap();
+    pub async fn insert(&self, user_id: &str) -> Result<(), CrudError> {
+        let user_id = Uuid::parse_str(user_id).unwrap();
         let job_id = self.job.gen_uuid();
         let job_type = self.job.kind();
 
-        if self.job.task.is_none() && self.job.code.is_none() && self.job.bin.is_none() {
-            eprintln!("err");
+        if let (None, None, None) = (&self.job.task, &self.job.code, &self.job.bin) {
             return Err(CrudError::Validation);
         }
+
+        let schedule_str = self.job.schedule.as_ref().unwrap();
+        let schedule = Schedule::parse(schedule_str).unwrap();
+        let next_run = schedule.next_run();
 
         let tx = self.tx().await?;
 
         sqlx::query!(
-            "INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, schedule) VALUES ($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, schedule, next_run_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             user_id,
             job_id,
             self.job.name,
             self.job.description,
             job_type as JobType,
-            self.job.schedule.unwrap()
+            self.job.schedule.as_ref().unwrap(),
+            next_run
         )
         .execute(&*self.pool)
         .await
         .unwrap();
 
-        if let Some(task) = self.job.task {
+        if let Some(task) = &self.job.task {
             sqlx::query!(
                 "INSERT INTO tasks (job_id, task_name) VALUES ($1, $2)",
                 job_id,
@@ -78,7 +87,7 @@ impl DB {
             .unwrap();
         };
 
-        if let Some(code) = self.job.code {
+        if let Some(code) = &self.job.code {
             sqlx::query!(
                 "INSERT INTO codes (job_id, src, lang, cmd) VALUES ($1, $2, $3, $4)",
                 job_id,
@@ -91,7 +100,7 @@ impl DB {
             .unwrap();
         };
 
-        if let Some(bin) = self.job.bin {
+        if let Some(bin) = &self.job.bin {
             sqlx::query!(
                 "INSERT INTO bins (job_id, path, cmd) VALUES ($1, $2, $3)",
                 job_id,
