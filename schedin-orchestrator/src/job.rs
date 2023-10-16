@@ -4,7 +4,6 @@ extern crate sqlx;
 
 use sqlx::types::{time::OffsetDateTime, Uuid};
 
-// TODO: add 'runs' and 'error_count'
 #[derive(Debug, Default, sqlx::FromRow)]
 pub struct Job {
     pub user_id: Option<Uuid>,

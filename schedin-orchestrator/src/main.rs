@@ -1,5 +1,6 @@
 //! Orchestrator
 
+extern crate sqlx;
 extern crate std;
 extern crate tokio;
 
