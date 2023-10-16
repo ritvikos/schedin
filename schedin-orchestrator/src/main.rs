@@ -10,17 +10,21 @@ mod job;
 
 use db::{create_pool, DB};
 use sqlx::Postgres;
-use std::env;
+use std::{env, thread, time::Duration};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let pool = create_pool::<Postgres>(&env::var("DATABASE_URL").unwrap())
-        .await
-        .unwrap();
+    loop {
+        let pool = create_pool::<Postgres>(&env::var("DATABASE_URL").unwrap())
+            .await
+            .unwrap();
 
-    let db = DB::new(pool);
+        let db = DB::new(pool);
 
-    if let Ok(jobs) = db.read_all().await {
-        println!("{:?}", jobs);
+        if let Ok(jobs) = db.read(Duration::from_secs(600)).await {
+            println!("{:?}", jobs);
+        }
+
+        thread::sleep(Duration::from_secs(60))
     }
 }
