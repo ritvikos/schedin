@@ -15,15 +15,12 @@ use validator::ValidationError;
 ///
 /// Parses and Validates the Schedule field in the API.
 #[derive(Debug)]
-pub struct ParsedSchedule {
+pub struct ScheduleParser {
     /// Occurrence
     pub routine: Routine,
 
-    /// Time
-    pub time: Time,
-
-    /// Timeframe
-    pub timeframe: Timeframe,
+    // Timestamp
+    pub timestamp: Timestamp,
 }
 
 #[derive(Debug)]
@@ -32,6 +29,12 @@ pub enum Routine {
     Every,
     Daily,
     Invalid,
+}
+
+#[derive(Debug)]
+pub struct Timestamp {
+    pub time: Time,
+    pub timeframe: Timeframe,
 }
 
 #[derive(Debug)]
@@ -66,7 +69,7 @@ impl Schedule<'_> {
     /// - `Ok(Self)` contains an instance of the struct if the parsing is successful.
     /// - `Err(ValidationError)` indicates that the input cannot be parsed or is invalid,
     ///   and the specific validation error is provided as an associated value.
-    pub fn parse(mut self) -> Result<ParsedSchedule, ValidationError> {
+    pub fn parse(mut self) -> Result<ScheduleParser, ValidationError> {
         match self.routine() {
             Ok(routine) => {
                 let result = match routine {
@@ -78,11 +81,7 @@ impl Schedule<'_> {
                 };
 
                 match result {
-                    Ok(datetime) => Ok(ParsedSchedule {
-                        routine,
-                        time: datetime.time,
-                        timeframe: datetime.timeframe,
-                    }),
+                    Ok(timestamp) => Ok(ScheduleParser { routine, timestamp }),
                     Err(error) => Err(error),
                 }
             }
@@ -115,11 +114,6 @@ impl Schedule<'_> {
 }
 
 pub struct TimestampParser<'a>(SplitWhitespace<'a>);
-
-pub struct Timestamp {
-    time: Time,
-    timeframe: Timeframe,
-}
 
 impl Default for Timestamp {
     fn default() -> Self {
@@ -221,7 +215,7 @@ impl<'a> TimestampParser<'a> {
     }
 }
 
-impl ParsedSchedule {
+impl ScheduleParser {
     /// # Next Run
     /// Calculates the next timestamp based on the provided `Timeframe` and time duration (in UTC).
     ///
@@ -234,8 +228,8 @@ impl ParsedSchedule {
     pub fn next_run(&self) -> OffsetDateTime {
         let current_time = OffsetDateTime::now_utc();
 
-        match &self.time {
-            Time::Integer(int) => match self.timeframe {
+        match &self.timestamp.time {
+            Time::Integer(int) => match self.timestamp.timeframe {
                 Timeframe::Sec | Timeframe::Min | Timeframe::Hr | Timeframe::Day => {
                     current_time + Duration::seconds(*int)
                 }
@@ -246,12 +240,14 @@ impl ParsedSchedule {
     }
 }
 
-impl Default for ParsedSchedule {
+impl Default for ScheduleParser {
     fn default() -> Self {
         Self {
             routine: Routine::Invalid,
-            time: Time::Integer(0),
-            timeframe: Timeframe::Sec,
+            timestamp: Timestamp {
+                time: Time::Integer(0),
+                timeframe: Timeframe::Sec,
+            },
         }
     }
 }

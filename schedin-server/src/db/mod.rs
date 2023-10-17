@@ -53,12 +53,13 @@ impl DB {
         let schedule_str = self.job.schedule.as_ref().unwrap();
         let schedule = Schedule::new(schedule_str).parse().unwrap();
         let next_run = schedule.next_run();
-        let tx = self.tx().await?;
 
-        let (job_interval, next_run_at) = match schedule.time {
+        let (job_interval, next_run_at) = match schedule.timestamp.time {
             Time::Integer(int) => (Some(int as i32), Some(next_run)),
             Time::Timestamp(_) => (None, Some(next_run)),
         };
+
+        let tx = self.tx().await?;
 
         sqlx::query!(
             r#"
