@@ -25,7 +25,7 @@ use validator::ValidationError;
 ///   validation error is provided as an associated value.
 ///
 pub fn validate_schedule(input: &str) -> Result<(), ValidationError> {
-    Schedule::new().parse(input)?;
+    Schedule::new(input).parse()?;
     Ok(())
 }
 

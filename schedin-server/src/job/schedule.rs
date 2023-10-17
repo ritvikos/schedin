@@ -4,26 +4,26 @@ extern crate std;
 extern crate time;
 extern crate validator;
 
-use std::str::SplitWhitespace;
+use core::str::SplitWhitespace;
 use time::{
     macros::{format_description, offset},
     Duration, OffsetDateTime, PrimitiveDateTime,
 };
 use validator::ValidationError;
 
-/// # Schedule Struct
+/// # ParsedSchedule Struct
 ///
 /// Parses and Validates the Schedule field in the API.
 #[derive(Debug)]
-pub struct Schedule {
+pub struct ParsedSchedule {
     /// Occurrence
     pub routine: Routine,
 
     /// Time
     pub time: Time,
 
-    /// TimeFrame
-    pub timeframe: TimeFrame,
+    /// Timeframe
+    pub timeframe: Timeframe,
 }
 
 #[derive(Debug)]
@@ -36,12 +36,12 @@ pub enum Routine {
 
 #[derive(Debug)]
 pub enum Time {
-    String(String),
+    Timestamp(OffsetDateTime),
     Integer(i64),
 }
 
 #[derive(Debug)]
-pub enum TimeFrame {
+pub enum Timeframe {
     Sec,
     Min,
     Hr,
@@ -49,22 +49,15 @@ pub enum TimeFrame {
     DateTime,
 }
 
-impl Schedule {
-    // Create a new instance
-    pub fn new() -> Self {
-        Self {
-            routine: Routine::Invalid,
-            time: Time::Integer(0),
-            timeframe: TimeFrame::Sec,
-        }
+pub struct Schedule<'a>(SplitWhitespace<'a>);
+
+impl Schedule<'_> {
+    pub fn new(input: &str) -> Schedule<'_> {
+        Schedule(input.split_whitespace())
     }
 
     /// # Parse
     /// Parses routine, time, and timeframe from a string.
-    ///
-    /// ## Arguments
-    ///
-    /// * `input` - A reference to the string input that needs to be parsed.
     ///
     /// ## Returns
     ///
@@ -73,109 +66,35 @@ impl Schedule {
     /// - `Ok(Self)` contains an instance of the struct if the parsing is successful.
     /// - `Err(ValidationError)` indicates that the input cannot be parsed or is invalid,
     ///   and the specific validation error is provided as an associated value.
-    pub fn parse(&self, input: &str) -> Result<Self, ValidationError> {
-        let mut parts = input.split_whitespace();
-
-        match self.parse_routine(&mut parts) {
-            Some(Routine::Once) => {
-                // check if 'date' is present
-                let date = parts
-                    .next()
-                    .ok_or_else(|| ValidationError::new("Missing 'date' field"))?;
-
-                // check if 'time' is present
-                let time = parts
-                    .next()
-                    .ok_or_else(|| ValidationError::new("Missing 'time' field"))?;
-
-                // create valid datetime format
-                let time_str = format!("{} {}", date, time);
-                let current_time = OffsetDateTime::now_utc();
-
-                parse_datetime(time_str.trim())?;
-
-                // check if date-time is already elapsed
-                if to_datetime(time_str.trim())
-                    .assume_offset(offset!(UTC))
-                    .lt(&current_time)
-                {
-                    println!("current datetime: {}", current_time);
-                    return Err(ValidationError::new(
-                        "Invalid DateTime: It has already elapsed.",
-                    ));
-                }
-
-                Ok(Self {
-                    routine: Routine::Once,
-                    time: Time::String(time_str),
-                    timeframe: TimeFrame::DateTime,
-                })
-            }
-            Some(Routine::Every) => {
-                // check if 'time' is present
-                let time_str = parts
-                    .next()
-                    .ok_or_else(|| ValidationError::new("Missing 'time'."))?
-                    .to_string();
-
-                // check if 'timeframe' is present
-                let timeframe_str = parts.next().map(|unit| unit.to_string()).ok_or_else(|| {
-                    ValidationError::new("Invalid 'timeframe'. Valid time frames: sec/min/hr.")
-                })?;
-
-                // parse 'time' as integer
-                let mut time_int = parse_time(&time_str).ok_or_else(|| {
-                    ValidationError::new("Invalid 'time'. It must be an integer.")
-                })?;
-
-                // check if 'time' is positive.
-                if time_int.is_negative() {
-                    return Err(ValidationError::new(
-                        "Invalid 'time'. It must be an integer.",
-                    ));
-                }
-
-                // parse 'timeframe'
-                let timeframe = match &timeframe_str[..] {
-                    "sec" => TimeFrame::Sec,
-                    "min" => {
-                        time_int *= 60;
-                        TimeFrame::Min
-                    }
-                    "hr" => {
-                        time_int *= 60 * 60;
-                        TimeFrame::Hr
-                    }
-                    "day" => {
-                        time_int *= 60 * 60 * 24;
-                        TimeFrame::Day
-                    }
+    pub fn parse(mut self) -> Result<ParsedSchedule, ValidationError> {
+        match self.routine() {
+            Ok(routine) => {
+                let result = match routine {
+                    Routine::Once => TimestampParser::new(self.0).datetime(),
+                    Routine::Every => TimestampParser::new(self.0).interval(),
                     _ => {
-                        return Err(ValidationError::new(
-                            "Invalid 'timeframe'. Valid time frames: sec/min/hr.",
-                        ))
+                        return Err(ValidationError::new("Invalid 'routine'"));
                     }
                 };
 
-                println!("time {:?}", time_int);
-                println!("timeframe: {:?}", timeframe);
-
-                Ok(Self {
-                    routine: Routine::Every,
-                    time: Time::Integer(time_int),
-                    timeframe,
-                })
+                match result {
+                    Ok(datetime) => Ok(ParsedSchedule {
+                        routine,
+                        time: datetime.time,
+                        timeframe: datetime.timeframe,
+                    }),
+                    Err(error) => Err(error),
+                }
             }
-            _ => Err(ValidationError::new("Invalid 'routine'.")),
+            Err(error) => Err(error),
         }
     }
 
-    pub fn parse_routine(&self, parts: &mut SplitWhitespace) -> Option<Routine> {
-        // check if 'routine' is present
-        let routine = if let Some(routine_str) = parts.next() {
-            // check if 'routine' starts with '@' symbol
+    /// Parse 'routine' parameter
+    pub fn routine(&mut self) -> Result<Routine, ValidationError> {
+        // check if present
+        let routine = if let Some(routine_str) = self.0.next() {
             if routine_str.starts_with('@') {
-                // parse 'routine'
                 match routine_str {
                     "@once" => Routine::Once,
                     "@every" => Routine::Every,
@@ -183,20 +102,131 @@ impl Schedule {
                     _ => Routine::Invalid,
                 }
             } else {
-                return None;
+                return Err(ValidationError::new(
+                    "Invalid syntax for 'routine' parameter",
+                ));
             }
         } else {
-            return None;
+            return Err(ValidationError::new("Missing 'routine' parameter"));
         };
 
-        Some(routine)
+        Ok(routine)
+    }
+}
+
+pub struct TimestampParser<'a>(SplitWhitespace<'a>);
+
+pub struct Timestamp {
+    time: Time,
+    timeframe: Timeframe,
+}
+
+impl Default for Timestamp {
+    fn default() -> Self {
+        Self {
+            time: Time::Integer(0),
+            timeframe: Timeframe::Sec,
+        }
+    }
+}
+
+impl<'a> TimestampParser<'a> {
+    pub fn new(inner: SplitWhitespace<'a>) -> Self {
+        TimestampParser(inner)
     }
 
+    pub fn datetime(&mut self) -> Result<Timestamp, ValidationError> {
+        // check if 'date' is present
+        let date = self
+            .0
+            .next()
+            .ok_or_else(|| ValidationError::new("Missing 'date' field"))?;
+
+        // check if 'time' is present
+        let time = self
+            .0
+            .next()
+            .ok_or_else(|| ValidationError::new("Missing 'time' field"))?;
+
+        // create valid timestamp
+        let timestamp_str = format!("{} {}", date, time);
+        let current_timestamp = OffsetDateTime::now_utc();
+
+        // check if valid timestamp
+        let timestamp = to_timestamp(timestamp_str.trim())?;
+
+        // check if date-time is already elapsed
+        if timestamp.lt(&current_timestamp) {
+            println!("current datetime: {}", current_timestamp);
+            return Err(ValidationError::new(
+                "Invalid DateTime: It has already elapsed.",
+            ));
+        }
+        Ok(Timestamp {
+            time: Time::Timestamp(timestamp),
+            timeframe: Timeframe::DateTime,
+        })
+    }
+
+    pub fn interval(&mut self) -> Result<Timestamp, ValidationError> {
+        // check if 'time' is present
+        let time_str = self
+            .0
+            .next()
+            .ok_or_else(|| ValidationError::new("Missing 'time'."))?
+            .to_string();
+
+        // check if 'timeframe' is present
+        let timeframe_str = self.0.next().map(|unit| unit.to_string()).ok_or_else(|| {
+            ValidationError::new("Invalid 'timeframe'. Valid time frames: sec/min/hr.")
+        })?;
+
+        // parse 'time' as integer
+        let mut duration = parse_time(&time_str)
+            .ok_or_else(|| ValidationError::new("Invalid 'time'. It must be an integer."))?;
+
+        // check if 'time' is positive.
+        if duration.is_negative() {
+            return Err(ValidationError::new(
+                "Invalid 'time'. It must be an integer.",
+            ));
+        }
+
+        // parse 'timeframe'
+        let timeframe = match &timeframe_str[..] {
+            "sec" => Timeframe::Sec,
+            "min" => {
+                duration *= 60;
+                Timeframe::Min
+            }
+            "hr" => {
+                duration *= 60 * 60;
+                Timeframe::Hr
+            }
+            "day" => {
+                duration *= 60 * 60 * 24;
+                Timeframe::Day
+            }
+            _ => {
+                return Err(ValidationError::new(
+                    "Invalid 'timeframe'. Valid time frames: sec/min/hr.",
+                ))
+            }
+        };
+
+        Ok(Timestamp {
+            time: Time::Integer(duration),
+            timeframe,
+        })
+    }
+}
+
+impl ParsedSchedule {
     /// # Next Run
-    /// Calculates the next timestamp based on the provided `TimeFrame` and time duration (in UTC).
+    /// Calculates the next timestamp based on the provided `Timeframe` and time duration (in UTC).
     ///
     /// This function takes the current time in UTC and adds a specified time duration based on
-    /// the selected `TimeFrame`. The result is returned as an `OffsetDateTime`.
+    /// the selected `Timeframe`. The result is returned as an `OffsetDateTime`.
     ///
     /// # Returns
     ///
@@ -206,19 +236,32 @@ impl Schedule {
 
         match &self.time {
             Time::Integer(int) => match self.timeframe {
-                TimeFrame::Sec | TimeFrame::Min | TimeFrame::Hr | TimeFrame::Day => {
+                Timeframe::Sec | Timeframe::Min | Timeframe::Hr | Timeframe::Day => {
                     current_time + Duration::seconds(*int)
                 }
                 _ => panic!(),
             },
-            Time::String(str) => to_datetime(str).assume_offset(offset!(UTC)),
+            Time::Timestamp(timestamp) => *timestamp,
         }
     }
 }
 
-fn to_datetime(input: &str) -> PrimitiveDateTime {
+impl Default for ParsedSchedule {
+    fn default() -> Self {
+        Self {
+            routine: Routine::Invalid,
+            time: Time::Integer(0),
+            timeframe: Timeframe::Sec,
+        }
+    }
+}
+
+fn to_timestamp(input: &str) -> Result<OffsetDateTime, ValidationError> {
     let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-    PrimitiveDateTime::parse(input, &format).unwrap()
+    match PrimitiveDateTime::parse(input, &format) {
+        Ok(datetime) => Ok(datetime.assume_offset(offset!(UTC))),
+        Err(_) => Err(ValidationError::new("Invalid DateTime format")),
+    }
 }
 
 fn parse_time(input: &str) -> Option<i64> {
@@ -227,28 +270,3 @@ fn parse_time(input: &str) -> Option<i64> {
     }
     None
 }
-
-fn parse_datetime(input: &str) -> Result<(), ValidationError> {
-    let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-    if let Err(err) = PrimitiveDateTime::parse(input, &format) {
-        eprintln!("{}", err);
-        return Err(ValidationError::new("Invalid DateTime Format!"));
-    };
-    Ok(())
-}
-
-// fn parse_datetime(input: &str) -> Result<PrimitiveDateTime, ValidationError> {
-//     let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-//     println!("{}", input);
-
-//     match PrimitiveDateTime::parse(input, &format) {
-//         Ok(datetime) => {
-//             println!("datetime: {}", datetime);
-//             Ok(datetime)
-//         }
-//         Err(err) => {
-//             eprintln!("{}", err);
-//             Err(ValidationError::new("Invalid datetime field"))
-//         }
-//     }
-// }
