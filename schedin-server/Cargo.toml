@@ -25,7 +25,10 @@ sqlx = { version = "0.7", features = [
     "time",
     "uuid",
 ], default-features = false }
-time = { version = "0.3.29", default-features = false }
+time = { version = "0.3.29", features = [
+    "macros",
+    "parsing",
+], default-features = false }
 uuid = { version = "1.4.1", features = ["v4"], default-features = false }
 validator = { version = "0.16.1", features = [
     "derive",

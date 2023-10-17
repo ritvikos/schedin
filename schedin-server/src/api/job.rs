@@ -85,6 +85,10 @@ pub async fn insert_job(
         return HttpResponse::BadRequest().json(err);
     }
 
+    if let (None, None, None) = (&payload.task, &payload.code, &payload.bin) {
+        return HttpResponse::BadRequest().json("Job must be defined: 'bin', 'task', or 'code'");
+    }
+
     if let Err(err) = DB::new(db.into_inner())
         .job(payload.0)
         .insert(&account.id)

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     job_name VARCHAR(255) NOT NULL,
     job_description TEXT,
     job_type job_types NOT NULL,
-    schedule VARCHAR(255) NOT NULL,
+    schedule VARCHAR(255),
     runs INTEGER DEFAULT 0,
     error_count INTEGER DEFAULT 0,
     next_run_at TIMESTAMPTZ,

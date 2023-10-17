@@ -16,7 +16,7 @@ pub struct Job {
     pub description: Option<String>,
     #[validate(custom(
         function = "validate_schedule",
-        message = "Valid Examples: @every 10 min or @once <todo!()>"
+        message = "Valid Examples: @every 10 min or @once 2023-10-17 06:45:00>"
     ))]
     pub schedule: Option<String>,
     pub task: Option<Task>,

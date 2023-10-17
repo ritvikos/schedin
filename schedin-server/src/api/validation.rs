@@ -13,7 +13,7 @@ use validator::ValidationError;
 ///
 /// ## Arguments
 ///
-/// * `input` - Schedule string that needs validation.
+/// `input` - Schedule string that needs validation.
 ///
 /// ## Returns
 ///
@@ -25,69 +25,8 @@ use validator::ValidationError;
 ///   validation error is provided as an associated value.
 ///
 pub fn validate_schedule(input: &str) -> Result<(), ValidationError> {
-    let schedule = Schedule::parse(input)?;
-    schedule.validate()
-}
-
-impl Schedule {
-    /// # Validate
-    ///
-    /// Validates the state of a struct object, ensuring that it meets the required criteria by
-    /// invoking corresponding validation methods for routine, time, and unit properties.
-    ///
-    /// ## Returns
-    ///
-    /// Returns a `Result<(), ValidationError>` where:
-    ///
-    /// - `Ok(())` indicates that the struct object is valid.
-    /// - `Err(ValidationError)` indicates that the struct object is invalid, and the corresponding
-    ///   validation error is provided as an associated value.
-    fn validate(&self) -> Result<(), ValidationError> {
-        self.validate_routine()?;
-        self.validate_time()?;
-
-        Ok(())
-    }
-
-    /// # Validate Routine
-    ///
-    /// Validates the state of a routine object, ensuring:
-    /// * It's either @every or @once
-    ///
-    /// ## Returns
-    ///
-    /// Returns a `Result<(), ValidationError>` where:
-    ///
-    /// - `Ok(())` indicates that the routine is valid.
-    /// - `Err(ValidationError)` indicates that the routine is invalid, and the corresponding
-    ///   validation error is provided as an associated value.
-    ///
-    fn validate_routine(&self) -> Result<(), ValidationError> {
-        match &self.routine[..] {
-            "@every" | "@once" => Ok(()),
-            _ => Err(ValidationError::new("Invalid routine parameter.")),
-        }
-    }
-
-    /// # Validate Time
-    ///
-    /// Validates the time field within a struct, ensuring:
-    /// * It's valid integer greater than 0.
-    ///
-    /// ## Returns
-    ///
-    /// Returns a `Result<(), ValidationError>` where:
-    ///
-    /// - `Ok(())` indicates that the time value is valid.
-    /// - `Err(ValidationError)` indicates that the time value is invalid, and the corresponding
-    ///   validation error is provided as an associated value.
-    fn validate_time(&self) -> Result<(), ValidationError> {
-        if !self.time.gt(&0) {
-            return Err(ValidationError::new("Invalid time parameter."));
-        }
-
-        Ok(())
-    }
+    Schedule::new().parse(input)?;
+    Ok(())
 }
 
 /// # Validate Source Format

@@ -58,7 +58,6 @@ impl DB {
     ///
     /// ## Errors
     ///
-    ///
     /// `Err(CrudError)` provides information about the specific error that occurred.
     pub async fn read(&self, interval: Duration) -> Result<Vec<Job>, CrudError> {
         let tx = self.tx().await?;
@@ -74,8 +73,9 @@ impl DB {
             r#"
             SELECT user_id, job_id, job_name, job_description, 
             job_type as "job_type: JobType", schedule, runs, error_count, next_run_at, 
-            created_at, job_status as "job_status: JobStatus" 
-            FROM jobs WHERE next_run_at BETWEEN $1 AND $2;
+            created_at, job_status as "job_status: JobStatus" FROM jobs 
+            WHERE next_run_at BETWEEN $1 AND $2 
+            AND job_status = 'scheduled';
             "#,
             current_time,
             interval

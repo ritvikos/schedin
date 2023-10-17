@@ -50,27 +50,22 @@ impl DB {
         let job_id = self.job.gen_uuid();
         let job_type = self.job.kind();
 
-        if let (None, None, None) = (&self.job.task, &self.job.code, &self.job.bin) {
-            return Err(CrudError::Validation);
-        }
-
         let schedule_str = self.job.schedule.as_ref().unwrap();
-        let schedule = Schedule::parse(schedule_str).unwrap();
+        let schedule = Schedule::new().parse(schedule_str).unwrap();
         let next_run = schedule.next_run();
 
         let tx = self.tx().await?;
 
         sqlx::query!(
             r#"
-            INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, schedule, next_run_at) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, next_run_at) 
+            VALUES ($1, $2, $3, $4, $5, $6)
             "#,
             user_id,
             job_id,
             self.job.name,
             self.job.description,
             job_type as JobType,
-            self.job.schedule.as_ref().unwrap(),
             next_run
         )
         .execute(&*self.pool)
