@@ -21,12 +21,12 @@ CREATE TABLE IF NOT EXISTS jobs (
     job_name VARCHAR(255) NOT NULL,
     job_description TEXT,
     job_type job_types NOT NULL,
-    schedule VARCHAR(255),
+    job_interval INTEGER,
+    job_status job_status DEFAULT 'scheduled' NOT NULL,
+    next_run_at TIMESTAMPTZ,
     runs INTEGER DEFAULT 0,
     error_count INTEGER DEFAULT 0,
-    next_run_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    job_status job_status DEFAULT 'scheduled' NOT NULL,
     CONSTRAINT unique_job_name_per_user UNIQUE (user_id, job_name)
 );
 

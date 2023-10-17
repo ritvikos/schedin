@@ -95,7 +95,7 @@ impl Schedule {
                 parse_datetime(time_str.trim())?;
 
                 // check if date-time is already elapsed
-                if to_datetime(&time_str)
+                if to_datetime(time_str.trim())
                     .assume_offset(offset!(UTC))
                     .lt(&current_time)
                 {
@@ -124,7 +124,7 @@ impl Schedule {
                 })?;
 
                 // parse 'time' as integer
-                let time_int = parse_time(&time_str).ok_or_else(|| {
+                let mut time_int = parse_time(&time_str).ok_or_else(|| {
                     ValidationError::new("Invalid 'time'. It must be an integer.")
                 })?;
 
@@ -138,9 +138,18 @@ impl Schedule {
                 // parse 'timeframe'
                 let timeframe = match &timeframe_str[..] {
                     "sec" => TimeFrame::Sec,
-                    "min" => TimeFrame::Min,
-                    "hr" => TimeFrame::Hr,
-                    "day" => TimeFrame::Day,
+                    "min" => {
+                        time_int *= 60;
+                        TimeFrame::Min
+                    }
+                    "hr" => {
+                        time_int *= 60 * 60;
+                        TimeFrame::Hr
+                    }
+                    "day" => {
+                        time_int *= 60 * 60 * 24;
+                        TimeFrame::Day
+                    }
                     _ => {
                         return Err(ValidationError::new(
                             "Invalid 'timeframe'. Valid time frames: sec/min/hr.",
@@ -197,10 +206,9 @@ impl Schedule {
 
         match &self.time {
             Time::Integer(int) => match self.timeframe {
-                TimeFrame::Sec => current_time + Duration::seconds(*int),
-                TimeFrame::Min => current_time + Duration::minutes(*int),
-                TimeFrame::Hr => current_time + Duration::hours(*int),
-                TimeFrame::Day => current_time + Duration::hours(*int * 24),
+                TimeFrame::Sec | TimeFrame::Min | TimeFrame::Hr | TimeFrame::Day => {
+                    current_time + Duration::seconds(*int)
+                }
                 _ => panic!(),
             },
             Time::String(str) => to_datetime(str).assume_offset(offset!(UTC)),

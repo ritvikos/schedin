@@ -9,7 +9,7 @@ pub mod utils;
 
 use super::error::CrudError;
 use crate::job::{
-    schedule::Schedule,
+    schedule::{Schedule, Time},
     schema::{Job, JobType},
 };
 use sqlx::{PgPool, Pool, Postgres, Transaction};
@@ -53,20 +53,25 @@ impl DB {
         let schedule_str = self.job.schedule.as_ref().unwrap();
         let schedule = Schedule::new().parse(schedule_str).unwrap();
         let next_run = schedule.next_run();
-
         let tx = self.tx().await?;
+
+        let (job_interval, next_run_at) = match schedule.time {
+            Time::Integer(int) => (Some(int as i32), Some(next_run)),
+            Time::String(_) => (None, Some(next_run)),
+        };
 
         sqlx::query!(
             r#"
-            INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, next_run_at) 
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO jobs (user_id, job_id, job_name, job_description, job_type, job_interval, next_run_at) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
             user_id,
             job_id,
             self.job.name,
             self.job.description,
             job_type as JobType,
-            next_run
+            job_interval,
+            next_run_at
         )
         .execute(&*self.pool)
         .await
