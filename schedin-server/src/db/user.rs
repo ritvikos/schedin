@@ -1,21 +1,24 @@
 //! IAM-related Crud Ops
 
 extern crate sqlx;
+extern crate std;
 
+use super::tx::Tx;
 use crate::{
     error::CrudError,
     iam::schema::{self},
 };
-use sqlx::{query, query_as, PgPool, Pool, Postgres, Transaction};
+use sqlx::{query, query_as, PgPool, Pool, Postgres};
+use std::sync::Arc;
 
 pub struct User {
-    pub pool: PgPool,
+    pub pool: Arc<PgPool>,
     pub user: schema::User,
 }
 
 impl User {
     /// New User
-    pub fn new(pool: Pool<Postgres>) -> Self {
+    pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
         Self {
             pool,
             user: schema::User::default(),
@@ -28,23 +31,13 @@ impl User {
         self
     }
 
-    /// Initialize Database Transaction
-    async fn tx(&self) -> Result<Transaction<'static, Postgres>, CrudError> {
-        match self.pool.begin().await {
-            Ok(tx) => Ok(tx),
-            Err(err) => {
-                eprintln!("{}", err);
-                Err(CrudError::Transaction)
-            }
-        }
-    }
-
     /// Insert New User
     pub async fn insert(&self) -> Result<(), CrudError> {
         let user_id = self.user.gen_uuid();
         let password = self.user.hash();
 
-        let tx = self.tx().await?;
+        let tx_manager = Tx::new(self.pool.clone());
+        let tx = tx_manager.init().await?;
 
         query!(
             r#"
@@ -56,14 +49,11 @@ impl User {
             password,
             self.user.email,
         )
-        .execute(&self.pool)
+        .execute(&*self.pool)
         .await
         .unwrap();
 
-        if let Err(err) = tx.commit().await {
-            eprintln!("Failed to commit transaction: {}", err);
-            return Err(CrudError::Transaction);
-        }
+        tx_manager.commit(tx).await?;
 
         Ok(())
     }
@@ -81,7 +71,7 @@ impl User {
             self.user.username.unwrap(),
             password
         )
-        .fetch_one(&self.pool)
+        .fetch_one(&*self.pool)
         .await;
 
         match query {

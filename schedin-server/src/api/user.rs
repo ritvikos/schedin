@@ -42,10 +42,11 @@ use std::{collections::HashMap, env, pin::Pin};
 /// - Database is down.
 /// - Internal server errors, etc...
 pub async fn signup(payload: Json<User>, db: Data<PgPool>) -> impl Responder {
-    let pool = db.into_inner().as_ref().clone();
-
-    // Insert new user
-    let user = db::user::User::new(pool).user(payload.0).insert().await;
+    // insert new user
+    let user = db::user::User::new(db.into_inner())
+        .user(payload.0)
+        .insert()
+        .await;
 
     if let Err(err) = user {
         return err.json();
@@ -72,10 +73,8 @@ pub async fn signup(payload: Json<User>, db: Data<PgPool>) -> impl Responder {
 /// - Database is down.
 /// - Internal server errors, etc...
 pub async fn signin(payload: Json<User>, db: Data<PgPool>) -> impl Responder {
-    let pool = db.into_inner().as_ref().clone();
-
-    // Try to retrieve user credentials from the database
-    let user = db::user::User::new(pool)
+    // try to retrieve user credentials from the database
+    let user = db::user::User::new(db.into_inner())
         .user(payload.0)
         .credentials()
         .await;
@@ -102,7 +101,7 @@ impl FromRequest for AuthorizedUser {
     type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        // Try to retrieve `authorization` token from headers
+        // try to retrieve `authorization` token from headers
         let token = match req.headers().get(header::AUTHORIZATION) {
             Some(header) => header.to_str(),
             None => {
@@ -112,7 +111,7 @@ impl FromRequest for AuthorizedUser {
         }
         .unwrap();
 
-        // Try to decode the claims and headers
+        // try to decode the claims and headers
         let decoded_token = decode::<Claims>(
             &token[7..],
             &DecodingKey::from_secret(env::var("JWT_SECRET").unwrap().as_ref()),
