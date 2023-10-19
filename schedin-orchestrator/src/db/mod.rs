@@ -3,11 +3,13 @@
 extern crate sqlx;
 extern crate std;
 
+mod tx;
+
 use crate::{
     error::CrudError,
     job::{Job, JobStatus, JobType},
 };
-use sqlx::{types::time::OffsetDateTime, Database, Pool, Postgres, Transaction};
+use sqlx::{types::time::OffsetDateTime, Database, Pool, Postgres};
 use std::time::Duration;
 
 pub struct DB {
@@ -21,17 +23,6 @@ impl DB {
         Self {
             pool,
             job: Job::new(),
-        }
-    }
-
-    /// Initialize Database Transaction
-    async fn tx(&self) -> Result<Transaction<'static, Postgres>, CrudError> {
-        match self.pool.begin().await {
-            Ok(tx) => Ok(tx),
-            Err(err) => {
-                eprintln!("{}", err);
-                Err(CrudError::Transaction)
-            }
         }
     }
 
@@ -60,19 +51,17 @@ impl DB {
     ///
     /// `Err(CrudError)` provides information about the specific error that occurred.
     pub async fn read(&self, interval: Duration) -> Result<Vec<Job>, CrudError> {
-        let tx = self.tx().await?;
-
         let current_time = OffsetDateTime::now_utc();
         let interval = current_time + interval;
 
-        println!("{:?}", current_time);
-        println!("{:?}", interval);
+        println!("current: {:?}", current_time);
+        println!("interval: {:?}", interval);
 
         let jobs = sqlx::query_as!(
             Job,
             r#"
             SELECT user_id, job_id, job_name, job_description, 
-            job_type as "job_type: JobType", schedule, runs, error_count, next_run_at, 
+            job_type as "job_type: JobType", runs, error_count, next_run_at, 
             created_at, job_status as "job_status: JobStatus" FROM jobs 
             WHERE next_run_at BETWEEN $1 AND $2 
             AND job_status = 'scheduled';
@@ -83,11 +72,6 @@ impl DB {
         .fetch_all(&self.pool)
         .await
         .unwrap();
-
-        if let Err(err) = tx.commit().await {
-            eprintln!("{}", err);
-            return Err(CrudError::Transaction);
-        }
 
         Ok(jobs)
     }

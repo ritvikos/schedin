@@ -11,7 +11,6 @@ pub struct Job {
     pub job_name: Option<String>,
     pub job_description: Option<String>,
     pub job_type: JobType,
-    pub schedule: String,
     pub runs: Option<i32>,
     pub error_count: Option<i32>,
     pub next_run_at: Option<OffsetDateTime>,
