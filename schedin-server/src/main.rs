@@ -1,6 +1,7 @@
 //! Scheduling Service
 
 extern crate actix_web;
+extern crate schedin_common;
 extern crate sqlx;
 extern crate std;
 
@@ -14,15 +15,14 @@ use api::{
     user::{signin, signup},
 };
 use certs::load_rustls_config;
-use db::utils::create_pool;
 use iam::schema::AuthorizedUser;
-use sqlx::migrate::Migrator;
+use schedin_common::db::create_pool;
+use sqlx::{migrate::Migrator, Postgres};
 use std::env;
 
 mod api;
 mod certs;
 mod db;
-mod error;
 mod iam;
 mod job;
 
@@ -32,7 +32,7 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 async fn main() -> std::io::Result<()> {
     let tls_config = load_rustls_config();
 
-    let pool = create_pool(&env::var("DATABASE_URL").unwrap())
+    let pool = create_pool::<Postgres>(&env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
 

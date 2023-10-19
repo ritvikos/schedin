@@ -1,14 +1,15 @@
 //! Orchestrator
 
+extern crate schedin_common;
 extern crate sqlx;
 extern crate std;
 extern crate tokio;
 
 mod db;
-mod error;
 mod job;
 
-use db::{create_pool, DB};
+use db::DB;
+use schedin_common::db::create_pool;
 use sqlx::Postgres;
 use std::{env, thread, time::Duration};
 

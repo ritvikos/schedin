@@ -89,12 +89,12 @@ pub async fn insert_job(
         return HttpResponse::BadRequest().json("Job must be defined: 'bin', 'task', or 'code'");
     }
 
-    if let Err(err) = DB::new(db.into_inner())
+    if let Err(error) = DB::new(db.into_inner())
         .job(payload.0)
         .insert(&account.id)
         .await
     {
-        return err.json();
+        return HttpResponse::InternalServerError().json(error.map());
     }
 
     let mut map = HashMap::with_capacity(1);
@@ -131,12 +131,12 @@ pub async fn delete_job(
     payload: Json<Job>,
     db: Data<PgPool>,
 ) -> impl Responder {
-    if let Err(err) = DB::new(db.into_inner())
+    if let Err(error) = DB::new(db.into_inner())
         .job(payload.0)
         .delete(account.id)
         .await
     {
-        return err.json();
+        return HttpResponse::InternalServerError().json(error.map());
     }
 
     let mut map = HashMap::with_capacity(1);

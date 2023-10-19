@@ -1,4 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["schedin-server", "schedin-orchestrator", "schedin-worker"]
+members = [
+    "schedin-server",
+    "schedin-orchestrator",
+    "schedin-worker",
+    "schedin-common",
+]
 exclude = ["schedin-infra"]

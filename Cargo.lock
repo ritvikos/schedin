@@ -1657,9 +1657,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad4cc8da4ef723ed60bced201181d83791ad433213d8c24efffda1eec85d741"
 
 [[package]]
+name = "schedin-common"
+version = "0.1.0"
+dependencies = [
+ "sqlx",
+]
+
+[[package]]
 name = "schedin-orchestrator"
 version = "0.1.0"
 dependencies = [
+ "schedin-common",
  "sqlx",
  "tokio",
 ]
@@ -1675,6 +1683,7 @@ dependencies = [
  "jsonwebtoken",
  "rustls 0.20.9",
  "rustls-pemfile",
+ "schedin-common",
  "serde",
  "sha2",
  "sqlx",

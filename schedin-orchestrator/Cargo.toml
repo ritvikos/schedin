@@ -12,6 +12,8 @@ sqlx = { version = "0.7.2", features = [
     "time",
 ], default-features = false }
 
+schedin-common = { path = "../schedin-common" }
+
 tokio = { version = "1.33.0", features = [
     "macros",
     "rt-multi-thread",

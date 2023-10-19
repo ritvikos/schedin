@@ -1,19 +1,17 @@
 //! CRUD Ops
 
+extern crate schedin_common;
 extern crate sqlx;
 extern crate std;
 extern crate uuid;
 
-mod tx;
 pub mod user;
-pub mod utils;
 
-use self::tx::Tx;
-use super::error::CrudError;
 use crate::job::{
     schedule::{Schedule, Time},
     schema::{Bin, Code, Job, JobType, Task},
 };
+use schedin_common::{error::CrudError, tx::Tx};
 use sqlx::{PgPool, Pool, Postgres};
 use std::sync::Arc;
 use uuid::Uuid;

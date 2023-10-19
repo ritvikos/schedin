@@ -48,8 +48,8 @@ pub async fn signup(payload: Json<User>, db: Data<PgPool>) -> impl Responder {
         .insert()
         .await;
 
-    if let Err(err) = user {
-        return err.json();
+    if let Err(error) = user {
+        return HttpResponse::InternalServerError().json(error.map());
     }
 
     let mut map = HashMap::with_capacity(1);
@@ -92,7 +92,9 @@ pub async fn signin(payload: Json<User>, db: Data<PgPool>) -> impl Responder {
 
             HttpResponse::Ok().json(response)
         }
-        Err(err) => err.json(),
+        Err(error) => {
+            return HttpResponse::InternalServerError().json(error.map());
+        }
     }
 }
 
