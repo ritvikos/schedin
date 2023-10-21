@@ -1,5 +1,6 @@
 //! Database Operations
 
+extern crate schedin_common;
 extern crate sqlx;
 extern crate std;
 
@@ -53,7 +54,18 @@ impl DB {
         println!("current: {:?}", current_time);
         println!("interval: {:?}", interval);
 
-        let jobs = sqlx::query_as!(
+        match self.read_inner(&current_time, &interval).await {
+            Ok(jobs) => Ok(jobs),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub async fn read_inner(
+        &self,
+        current_time: &OffsetDateTime,
+        elapsed: &OffsetDateTime,
+    ) -> Result<Vec<Job>, CrudError> {
+        match sqlx::query_as!(
             Job,
             r#"
             SELECT user_id, job_id, job_name, job_description, 
@@ -63,12 +75,16 @@ impl DB {
             AND job_status = 'scheduled';
             "#,
             current_time,
-            interval
+            elapsed
         )
         .fetch_all(&self.pool)
         .await
-        .unwrap();
-
-        Ok(jobs)
+        {
+            Ok(jobs) => Ok(jobs),
+            Err(error) => {
+                eprintln!("{}", error);
+                Err(CrudError::Read)
+            }
+        }
     }
 }
